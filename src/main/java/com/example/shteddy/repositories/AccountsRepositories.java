@@ -1,21 +1,15 @@
 package com.example.shteddy.repositories;
 
 import com.example.shteddy.account.Account;
+import com.example.shteddy.user.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
-public interface AccountsRepositories {
+@Repository
+public interface AccountsRepositories extends JpaRepository<Account, Integer> {
+    List<Account> findByUser(User user);
 
-        Set<Account> findAll();
-
-        List<Account> findByUser(Integer userID); // returns a List of Accounts
-
-        Optional<Account> save(Account account);
-
-        Optional<Account> update(Integer accountID, Account updatedAccount);
-
-        void deleteByUser(Integer userID); // deletes all accounts associated with a User
+    List<Account> findByUserId(Integer userId);
 }
-

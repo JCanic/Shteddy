@@ -2,6 +2,7 @@ package com.example.shteddy.transaction;
 
 import com.example.shteddy.account.Account;
 import com.example.shteddy.category.Category;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,10 +20,12 @@ import java.util.Objects;
 public class Transaction {
 
     @Id
+    @Column(name = "transaction_id")
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long transactionID;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
@@ -32,6 +35,7 @@ public class Transaction {
     private String description;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
