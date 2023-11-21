@@ -23,6 +23,12 @@ public class Category {
     private String name;
     private String description;
 
-    @OneToMany(mappedBy = "category") // Adjust mappedBy to the field name representing Category in Transaction class
+    public Category(String name, String description, List<Transaction> transactions) {
+        this.name = name;
+        this.description = description;
+        this.transactions = transactions;
+    }
+
+    @OneToMany(mappedBy = "category") //
     private List<Transaction> transactions;
 }

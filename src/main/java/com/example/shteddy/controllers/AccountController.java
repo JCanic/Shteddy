@@ -9,15 +9,21 @@ import com.example.shteddy.transaction.TransactionDTO;
 import com.example.shteddy.user.User;
 import com.example.shteddy.user.UserLoginResponse;
 import jakarta.transaction.Transactional;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -202,6 +208,86 @@ public class AccountController {
         List<Category> categories = categoryRepository.findAll();
         return ResponseEntity.ok(categories);
     }
+
+    @PostMapping("/import_transactions")
+    public ResponseEntity<?> importTransactions(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is empty");
+        }
+
+        try {
+            Workbook workbook = new XSSFWorkbook(file.getInputStream());
+            Sheet sheet = workbook.getSheetAt(0);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                Cell dateCell = row.getCell(0);
+                if(dateCell == null || dateCell.getCellType() == CellType.BLANK) {
+                    // Skip this row or handle as needed if the date cell is empty
+                    continue;
+                }
+
+                LocalDate date;
+                if(dateCell.getCellType() == CellType.NUMERIC) {
+                    date = dateCell.getDateCellValue().toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate();
+                } else {
+                    String dateStr = dateCell.getStringCellValue();
+                    if(dateStr != null && !dateStr.trim().isEmpty()) {
+                        date = LocalDate.parse(dateStr.trim(), formatter);
+                    } else {
+                        continue;
+                    }
+                }
+
+                BigDecimal amount = BigDecimal.ZERO;
+                if(row.getCell(3) != null && row.getCell(3).getCellType() == CellType.NUMERIC) {
+                    amount = new BigDecimal(row.getCell(3).getNumericCellValue());
+                } else if(row.getCell(3) != null && row.getCell(3).getCellType() == CellType.STRING) {
+                    String amountStr = row.getCell(3).getStringCellValue();
+                    if(amountStr != null && !amountStr.isEmpty()) {
+                        amountStr = amountStr.replace(",", ".");
+                        try {
+                            amount = new BigDecimal(amountStr);
+                        } catch (NumberFormatException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                String description = row.getCell(7).getStringCellValue();
+
+                //String category = categorizeTransaction(description);
+
+                Transaction transaction = new Transaction();
+                transaction.setDate(date);
+                transaction.setAmount(amount);
+                transaction.setDescription(description);
+                Account account = accountsRepositories.findById(1)
+                        .orElseThrow(() -> new RuntimeException("Account not found"));
+                transaction.setAccount(account);
+
+                Category category = categoryRepository.findById(1L).
+                        orElseThrow(() -> new RuntimeException("Category not found"));
+                //transaction.setCategory(category);
+                transaction.setCategory(category);
+                transaction.setTransactionType("debit");
+                transactionRepository.save(transaction);
+            }
+
+            return ResponseEntity.ok("Transactions imported successfully");
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to import transactions");
+        }
+    }
+
+
 
 
 }
