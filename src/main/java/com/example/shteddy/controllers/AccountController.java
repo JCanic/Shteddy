@@ -287,6 +287,43 @@ public class AccountController {
         }
     }
 
+    @PutMapping("/transactions/{transactionId}")
+    public ResponseEntity<?> updateTransaction(@PathVariable Long transactionId, @RequestBody TransactionDTO transactionDTO) {
+        Optional<Transaction> transactionOptional = transactionRepository.findById(transactionId);
+        if (!transactionOptional.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Transaction transaction = transactionOptional.get();
+        transaction.setDate(transactionDTO.getDate());
+        transaction.setAmount(transactionDTO.getAmount());
+        transaction.setDescription(transactionDTO.getDescription());
+        transaction.setTransactionType(transactionDTO.getTransactionType());
+
+
+        if (transactionDTO.getCategoryName() != null) {
+            Category category = categoryRepository.findByName(transactionDTO.getCategoryName())
+                    .orElseThrow(() -> new RuntimeException("Category not found"));
+            transaction.setCategory(category);
+        }
+
+        Transaction updatedTransaction = transactionRepository.save(transaction);
+
+        return ResponseEntity.ok(updatedTransaction);
+    }
+
+
+    @DeleteMapping("/transactions/{transactionId}")
+    public ResponseEntity<?> deleteTransaction(@PathVariable Long transactionId) {
+        return transactionRepository.findById(transactionId)
+                .map(transaction -> {
+                    transactionRepository.delete(transaction);
+                    return ResponseEntity.ok().build();
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+
 
 
 
